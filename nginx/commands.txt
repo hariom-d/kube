@@ -1,0 +1,2 @@
+kind get clusters    #gives you the total number of clusters managd by KIND
+
