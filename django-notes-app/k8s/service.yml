@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: notes-app-service
+  namespace: notes-app
+spec:
+  type: ClusterIP
+  selector:
+    app: notes-app             # Match pods with this label
+  ports:
+    - protocol: TCP
+      port: 8000              # Service port
+      targetPort: 8000      # Pod/container port
