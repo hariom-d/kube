@@ -1,0 +1,39 @@
+kind get clusters    #gives you the total number of clusters managed by KIND
+scp -P 22 -r . hari@localhost:/home/hari/kubernetes-in-one-shot/nginx/
+kubectl apply -f deployment.yml.  kubectl apply -f service.yml.
+kubectl describe pod <podname> -n <namespace>.
+kubectl scale deployment/nginx-deployment --replicas=2 -n nginx-ns.
+kubectl delete -f service.yml
+kubectl get nodes
+kubectl exec -it <podname> -n <namespace> -- bash
+Run this command to create a pod in the same network/namespace to investigate a pod that you want to troubleshoot. kubectl run tmp-shell --rm -i --tty --image nicolaka/netshoot -n nginx-ns -- /bin/bash
+kubectl describe pod/<podname> -n <namespace>
+
+
+kubectl logs -l app=nginx
+kubectl describe deployment nginx-deployment  //This gives more info about the deployment
+kubectl describe svc nginx-service //This gives more info about the service
+kubectl describe ingress nginx-ingress //This gives more info about the ingress. An ingress resource is a router to services.
+
+helm search repo bitnami | grep Prometheus
+kind delete cluster --name hari-kind-lb
+kind create cluster --config kind-config.yml --name hari-lb
+
+docker network inspect kind -- to find which IPs are available for looadbalancer pool. 
+kubectl get pods -n metallb-system  -- to check whether metallb is working fine
+
+
+kubectl run test-pod --rm -it --image=curlimages/curl --restart=Never -- curl http://nginx-service.default.svc.cluster.local:80  //Internal testing of service
+
+The LoadBalancer IP (e.g., 172.18.0.100) replaces NodePort, so remove extraPortMappings from your kind config:
+yamlkind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+
+//Argo CD
+admin/e7F67znlXZjrSZ0E
+kubectl port-forward service/argocd-server -n argocd 9000:443   then open through browser localhost:9000
+
+
+
