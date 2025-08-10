@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx-app
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/hariom-d/kube.git
+    targetRevision: HEAD
+    path: my-nginx
+    directory:
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: my-nginx
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+

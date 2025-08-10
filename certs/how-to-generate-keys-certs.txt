@@ -1,0 +1,134 @@
+# Create directories
+mkdir certs
+
+# Generate server CA key and certificate
+openssl genrsa -out certs/server-ca.key 2048
+openssl req -new -x509 -nodes -days 1000 -key certs/server-ca.key -out certs/server-ca.crt
+
+# Generate client CA key and certificate (can use the same CA for both if desired)
+openssl genrsa -out certs/client-ca.key 2048
+openssl req -new -x509 -nodes -days 1000 -key certs/client-ca.key -out certs/client-ca.crt
+
+# Generate server private key and CSR
+openssl req -newkey rsa:2048 -nodes -keyout certs/server.key -out certs/server.req
+# Sign server certificate with CA
+openssl x509 -req -in certs/server.req -days 1000 -CA certs/server-ca.crt -CAkey certs/server-ca.key -set_serial 01 -out certs/server.crt
+
+# Generate client private key and CSR
+openssl req -newkey rsa:2048 -nodes -keyout certs/client.key -out certs/client.req
+# Sign client certificate with CA
+openssl x509 -req -in certs/client.req -days 1000 -CA certs/client-ca.crt -CAkey certs/client-ca.key -set_serial 01 -out certs/client.crt
+
+
+This creates:
+
+server.key, server.crt (server private key and cert)
+
+client.key, client.crt (client private key and cert)
+
+CA certificates for both.
+
+Step 2: Create a Node.js HTTPS server that enforces mTLS
+
+javascript
+// server.js
+const https = require('node:https');
+const fs = require('fs');
+
+const options = {
+  key: fs.readFileSync('./certs/server.key'),
+  cert: fs.readFileSync('./certs/server.crt'),
+  ca: [fs.readFileSync('./certs/client.crt')], // Trust client cert
+  requestCert: true,       // Require client certificate
+  rejectUnauthorized: true // Reject unauthenticated clients
+};
+
+https.createServer(options, (req, res) => {
+  res.writeHead(200, {});
+  res.end('Hello World');
+}).listen(3000, () => {
+  console.log('Server is running on port 3000');
+});
+The server presents its own certificate and requests a client certificate, only allowing clients with trusted certs to connect.
+
+Step 3: Create a Node.js client configured for mTLS
+
+javascript
+// client.js
+const https = require('node:https');
+const fs = require('fs');
+
+const options = {
+  hostname: 'localhost',
+  port: 3000,
+  path: '/',
+  ca: [fs.readFileSync('./certs/server.crt')],      // Trust server cert
+  key: fs.readFileSync('./certs/client.key'),       // Client private key
+  cert: fs.readFileSync('./certs/client.crt'),      // Client certificate
+  rejectUnauthorized: true
+};
+
+const req = https.request(options, (res) => {
+  console.log('Status Code : ', res.statusCode);
+  res.on('data', (data)=> {
+    process.stdout.write(data);
+  });
+});
+req.on('error', (err) => {
+  console.log(err);
+});
+req.end();
+The client both trusts and presents its own certificate to the server.
+
+Summary:
+
+Both client and server have private keys and certificates.
+
+Both verify the peer's certificate before allowing a connection: this is mutual TLS.
+
+Certificate generation can use your own CA for local testing or a public CA for real-world use.
+
+This setup allows only clients with authorized certificates to connect to the server, and vice versa—implementing true mutual authentication.
+
+Next Query: generate a sample request for the client code above
+
+Got it — you want a sample request using the mTLS client code we built above so you can see how it works in practice.
+
+Since the client.js example already sends a request to https://localhost:3000/, you can either:
+
+Run the Node.js client script
+After starting the Node.js mTLS server (node server.js), run:
+
+bash
+node client.js
+You should see:
+
+text
+Status Code : 200
+Hello World
+This proves that the client and server exchanged and validated each other's certificates.
+
+Send a request with curl using mTLS
+You can simulate the same client request without writing Node code, using:
+
+bash
+curl -vk https://localhost:3000/ \
+  --key ./certs/client.key \
+  --cert ./certs/client.crt \
+  --cacert ./certs/server.crt
+Explanation of flags:
+
+--key → client’s private key.
+
+--cert → client’s public certificate.
+
+--cacert → the server’s certificate (to trust the server’s identity).
+
+-k → in dev mode, ignore hostname mismatch (use only for testing).
+
+If client or server certificates don’t match the trusted CA, the connection will fail with an SSL_ERROR and the request won’t go through — that’s the security mTLS provides.
+
+✅ Tip: In your example above, since you are trusting the specific peer's certificate directly rather than a CA file, the ca field in the client/server configuration contains the peer's public cert. In production, you'd normally store and trust the CA certificate, not each peer's certificate individually.
+
+
+
