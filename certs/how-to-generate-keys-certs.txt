@@ -148,7 +148,7 @@ bash
 curl -vk https://localhost:3000/ \
   --key ./certs/client.key \
   --cert ./certs/client.crt \
-  --cacert ./certs/ca-chain.crt
+  --cacert ./certs/server-ca-chain.crt
 ./certs/client.key — Client private key.
 
 ./certs/client.crt — Client leaf certificate issued by your CA.
