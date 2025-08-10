@@ -35,5 +35,8 @@ nodes:
 admin/e7F67znlXZjrSZ0E
 kubectl port-forward service/argocd-server -n argocd 9000:443   then open through browser localhost:9000
 
+curl <service>:<port>. We use this with a temporary pod created in the same cluster with Busybox.
+
+
 
 
