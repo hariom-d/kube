@@ -130,5 +130,55 @@ If client or server certificates don’t match the trusted CA, the connection wi
 
 ✅ Tip: In your example above, since you are trusting the specific peer's certificate directly rather than a CA file, the ca field in the client/server configuration contains the peer's public cert. In production, you'd normally store and trust the CA certificate, not each peer's certificate individually.
 
+For a production mTLS setup with curl, the important difference is how the CA certificate (--cacert) is structured and used. Instead of pointing to a single leaf certificate like server.crt, you typically provide the full certificate chain of trusted CAs, starting with the Root CA and including any Intermediate CAs, so the client can validate the entire chain of trust.
 
+How to prepare a CA certificate file for production:
+Combine all relevant CA certificates into a single PEM file in order from the leaf’s signer up to the root CA.
+
+For example, concatenate your Intermediate CA and Root CA certificates into one file (if you have them):
+
+bash
+cat intermediateCA.crt rootCA.crt > ca-chain.crt
+Your ca-chain.crt file will be passed as the --cacert argument in curl.
+
+This file represents the trust anchor(s) your client uses to validate the server’s certificate.
+
+Example curl command for a production-style mTLS request:
+bash
+curl -vk https://localhost:3000/ \
+  --key ./certs/client.key \
+  --cert ./certs/client.crt \
+  --cacert ./certs/ca-chain.crt
+./certs/client.key — Client private key.
+
+./certs/client.crt — Client leaf certificate issued by your CA.
+
+./certs/ca-chain.crt — Full CA chain (intermediate + root), allowing full verification of the server cert chain.
+
+Why this matters:
+In real deployments, the server presents its full chain (leaf + intermediate certs), and clients validate signatures up the chain to a trusted root CA.
+
+Using just the server leaf cert as --cacert works only if you trust that single cert directly (e.g., testing). A full CA chain file is more standard and secure in production.
+
+This also means your client cert can be validated similarly by the server using its own configured CA trust chains.
+
+Summary example CA chain file (ca-chain.crt):
+text
+-----BEGIN CERTIFICATE-----
+[Intermediate CA Certificate PEM content]
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+[Root CA Certificate PEM content]
+-----END CERTIFICATE-----
+Make sure the order is from intermediate (closest to leaf) on top, down to the root CA at bottom.
+
+
+Query: Verify Server Certificate Chain Against CA Chain
+To verify your server certificate and its chain against your CA chain file:
+
+bash
+openssl verify -CAfile ca-chain.crt server.crt
+This command checks if server.crt chains up to the trusted CAs in ca-chain.crt.
+
+A successful verification means “server.crt: OK”.
 
